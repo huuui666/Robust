@@ -96,10 +96,21 @@ covDetMCD <- function(x, alpha, ...) {
   # the number of observations in the data set, as discussed in the lectures.
   # You can use function h.alpha.n() from package robustbase to compute the 
   # subset size.
+  library(expm)
+
   n = nrow(x)
   p = ncol(x)
-  alpha=0.8
   h = h.alpha.n(alpha, n, p)
+  correct_eigen <- function(x,s){
+    eigen_list = eigen(mat3)
+    E = as.matrix(eigen_list$vectors)
+    V = x %*% E
+    l = apply(V,2,qn)
+    L = diag(l^2)
+    sigma = E %*% L %*% t(E)
+    return (sigma)
+  }
+  
   cor_choice <- function(x,choice){
     if (choice == 1){
       return (corHT(x))
@@ -122,6 +133,8 @@ covDetMCD <- function(x, alpha, ...) {
   }
   raw_center = matrix(0,6,p)
   raw_cov = list()
+  best_set = list()
+  six_det = matrix(0,1,6)
   for (i in 1:6){
     subset = x[sample(n,h),]
     mu = apply(subset,2,mean)
@@ -130,22 +143,36 @@ covDetMCD <- function(x, alpha, ...) {
     new_det = initial_det - 10^-6
     iter = 0
     while (abs(new_det - initial_det)> 10^-8){
-      initial_det = new_det
+      if (iter>0){
+        initial_det = new_det
+      }
       distance = mahalanobis(x,mu,s)
       Order = order(distance)
       new_set = Order[1:h]
       new_subset = x[new_set,]
       new_mu = apply(new_subset,2,mean)
-      new_s = cor_choice(new_subset,i)
+      new_s = cov(new_subset)
       new_det = det(new_s)
       iter =+ 1
       
     }
     raw_center[i,]=new_mu
     raw_cov[[i]]= new_s
+    best_set[[i]] = new_subset
+    six_det[,i]=det(new_s)
     }
+    min_index = which(six_det == min(six_det))
+    distance_of_best = mahalanobis(x,raw_center[min_index],raw_cov[[min_index]])
+    best = which(distance_of_best <= qchisq(0.975,p))
+    last_best = x[best,]
+    center = apply(last_best,2,mean)
+    cov = cov(last_best)
+    weights = rep(0,n)
+    weights = replace(weights, best, 1)
     
-    output=list('raw_center'=raw_center, 'raw_cov' = raw_cov,'iter'=iter)
+      
+    output=list('raw_center'=raw_center[min_index], 'raw_cov' = raw_cov[[min_index]],'iter'=iter,'center'=center, 'cov'=cov,
+                'best'=best,'weights'=weights)
     output
   }
   

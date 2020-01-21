@@ -97,18 +97,23 @@ covDetMCD <- function(x, alpha, ...) {
   # You can use function h.alpha.n() from package robustbase to compute the 
   # subset size.
   library(expm)
-
+  x = apply(x,2,function(y) (y-median(y))/qn(y))
+  
+     
   n = nrow(x)
   p = ncol(x)
   h = h.alpha.n(alpha, n, p)
+  c_alpha = alpha/ (pgamma(1+p/2,1) * (qchisq(alpha,p)/2))
   correct_eigen <- function(x,s){
-    eigen_list = eigen(mat3)
+    eigen_list = eigen(s)
     E = as.matrix(eigen_list$vectors)
     V = x %*% E
     l = apply(V,2,qn)
     L = diag(l^2)
     sigma = E %*% L %*% t(E)
-    return (sigma)
+    mu = sqrtm(sigma) %*% apply(x %*% solve(sqrtm(sigma)),2,median)
+    output = list('center' = mu,'cov' = sigma)
+    output
   }
   
   cor_choice <- function(x,choice){
@@ -136,9 +141,12 @@ covDetMCD <- function(x, alpha, ...) {
   best_set = list()
   six_det = matrix(0,1,6)
   for (i in 1:6){
-    subset = x[sample(n,h),]
-    mu = apply(subset,2,mean)
-    s = cor_choice(subset,i)
+    #subset = x[sample(n,h),]
+    #mu = apply(subset,2,mean)
+    initial_s = cor_choice(x,i)
+    correction = correct_eigen(x,initial_s)
+    mu = correction$center
+    s = correction$cov
     initial_det = det(s)
     new_det = initial_det - 10^-6
     iter = 0

@@ -64,8 +64,25 @@ covBACON1 <- function(z) {
 rawCovOGK <- function(z) {
   # *enter your code here*
   # Hint: have a look at function covOGK() in package robustbase
-  ogk = covOGK(z,sigmamu = s_Qn)
-  return (ogk$cov)
+  D=diag(apply(z,2,qn))
+  Z= apply(z,1,function(y)(solve(D)%*%y))
+  Z=t(Z)
+  U = matrix(NA,ncol(z),ncol(z))
+  for (j in 1:ncol(z)){
+    for (k in 1:ncol(z)){
+      U[j,k] = 0.25 * (qn((Z[,j]+Z[,k])^2)-qn((Z[,j]-Z[,k])^2))
+    }
+  }
+  E = eigen(U)$vectors
+  V = z %*% E
+  l = apply(V,2,qn)
+  L = diag(l^2)
+  m = matrix(apply(V,2,median),ncol(z),1)
+  mu = E %*% m
+  sigma = E %*% L %*% t(E)
+  raw_mu = D %*% mu
+  raw_sigma = D %*% sigma %*% t(D)
+  return (raw_sigma)
 }
 
 

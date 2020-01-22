@@ -231,4 +231,13 @@ covDetMCD <- function(x, alpha, ...) {
 
 lmDetMCD <- function(x, y, alpha, ...) {
   # *enter your code here*
+  z = as.matrix(cbind(y,x))
+  fit = covDetMCD(z,alpha)
+  mu = fit$center
+  sigma = fit$cov
+  beta = solve(sigma[2:nrow(sigma),2:ncol(sigma)]) %*% sigma[2:nrow(sigma),1]
+  Alpha =   mu[1]- t(mu[2:length(mu)]) %*% beta
+  fitted.values = rep(Alpha,nrow(x)) + x%*% beta
+  residuals = fitted.values - y
+  output = list('coefficients'=beta, 'MCD' = fit, 'fitted.values' = fitted.values,'residuals' = residuals)  
 }

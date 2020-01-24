@@ -74,7 +74,7 @@ rawCovOGK <- function(z) {
     }
   }
   E = eigen(U)$vectors
-  V = z %*% E
+  V = Z %*% E
   l = apply(V,2,qn)
   L = diag(l^2)
   m = matrix(apply(V,2,median),ncol(z),1)
@@ -196,7 +196,7 @@ covDetMCD <- function(x, alpha, ...) {
     weights = replace(weights, best, 1)
     
       
-    output=list('raw_center'=raw_center[min_index], 'raw_cov' = raw_cov[[min_index]],'iter'=iter,'center'=center, 'cov'=cov,
+    output=list('raw.center'=raw_center[min_index], 'raw.cov' = raw_cov[[min_index]],'iter'=iter,'center'=center, 'cov'=cov,
                 'best'=best,'weights'=weights)
     output
   }
@@ -236,8 +236,8 @@ lmDetMCD <- function(x, y, alpha, ...) {
   mu = fit$center
   sigma = fit$cov
   beta = solve(sigma[2:nrow(sigma),2:ncol(sigma)]) %*% sigma[2:nrow(sigma),1]
-  Alpha =   mu[1]- t(mu[2:length(mu)]) %*% beta
-  fitted.values = rep(Alpha,nrow(x)) + x%*% beta
+  intercept =   mu[1]- t(mu[2:length(mu)]) %*% beta
+  fitted.values = rep(intercept,nrow(x)) + x%*% beta
   residuals = fitted.values - y
-  output = list('coefficients'=beta, 'MCD' = fit, 'fitted.values' = fitted.values,'residuals' = residuals)  
+  output = list('coefficients'=rbind(intercept,beta), 'MCD' = fit, 'fitted.values' = fitted.values,'residuals' = residuals)  
 }

@@ -48,8 +48,14 @@ covMSS <- function(z) {
   # *enter your code here*
   z_norm = sqrt(apply(z^2,1,sum))
   k = z / z_norm
-  return (crossprod(k))
+  k[is.nan(k)]=0
+  return (crossprod(k)/nrow(z))
 }
+#   cross = apply(k,1,function(y) (y%*%t(y)))
+#   cross[is.nan(cross)]=0
+#   output = matrix(apply(cross,1,sum),ncol(z),ncol(z))
+#   return (output/nrow(z))
+# }
 
 # covariance matrix based on first step of BACON
 covBACON1 <- function(z) {
@@ -64,25 +70,27 @@ covBACON1 <- function(z) {
 rawCovOGK <- function(z) {
   # *enter your code here*
   # Hint: have a look at function covOGK() in package robustbase
-  D=diag(apply(z,2,qn))
-  Z= apply(z,1,function(y)(solve(D)%*%y))
-  Z=t(Z)
-  U = matrix(NA,ncol(z),ncol(z))
-  for (j in 1:ncol(z)){
-    for (k in 1:ncol(z)){
-      U[j,k] = 0.25 * (qn((Z[,j]+Z[,k])^2)-qn((Z[,j]-Z[,k])^2))
-    }
-  }
-  E = eigen(U)$vectors
-  V = Z %*% E
-  l = apply(V,2,qn)
-  L = diag(l^2)
-  m = matrix(apply(V,2,median),ncol(z),1)
-  mu = E %*% m
-  sigma = E %*% L %*% t(E)
-  raw_mu = D %*% mu
-  raw_sigma = D %*% sigma %*% t(D)
-  return (raw_sigma)
+  # D=diag(apply(z,2,qn))
+  # Z= apply(z,1,function(y)(solve(D)%*%y))
+  # Z=t(Z)
+  # U = matrix(NA,ncol(Z),ncol(Z))
+  # for (j in 1:ncol(Z)){
+  #   for (k in 1:ncol(Z)){
+  #     U[j,k] = 0.25 * (qn((Z[,j]+Z[,k])^2)-qn((Z[,j]-Z[,k])^2))
+  #   }
+  # }
+  # E = eigen(U)$vectors
+  # V = Z %*% E
+  # l = apply(V,2,qn)
+  # L = diag(l^2)
+  # m = matrix(apply(V,2,median),ncol(z),1)
+  # mu = E %*% m
+  # sigma = E %*% L %*% t(E)
+  # raw_mu = D %*% mu
+  # raw_sigma = D %*% sigma %*% t(D)
+  # return (raw_sigma)
+  ogk = covOGK(z, n.iter=1, sigmamu = s_Qn,rcov=covGK)
+  return (ogk$cov)
 }
 
 
@@ -106,7 +114,7 @@ rawCovOGK <- function(z) {
 #                raw estimator
 # any other output you want to return
 
-covDetMCD <- function(x, alpha, ...) {
+mycovDetMCD <- function(x, alpha, ...) {
   # *enter your code here*
   #
   # Please note that the subset sizes for the MCD are not simply fractions of 
@@ -114,13 +122,15 @@ covDetMCD <- function(x, alpha, ...) {
   # You can use function h.alpha.n() from package robustbase to compute the 
   # subset size.
   library(expm)
+  x_initial = x
   x = apply(x,2,function(y) (y-median(y))/qn(y))
   
      
   n = nrow(x)
   p = ncol(x)
   h = h.alpha.n(alpha, n, p)
-  c_alpha = alpha/ (pgamma(1+p/2,1) * (qchisq(alpha,p)/2))
+  c_alpha = alpha/ pgamma(qchisq(alpha,p)/2,1+p/2,1)
+  c_alpha_reweight = (1-0.025)/(pgamma(qchisq(1-0.025,p)/2,1+p/2,1))
   correct_eigen <- function(x,s){
     eigen_list = eigen(s)
     E = as.matrix(eigen_list$vectors)
@@ -156,7 +166,9 @@ covDetMCD <- function(x, alpha, ...) {
   raw_center = matrix(0,6,p)
   raw_cov = list()
   best_set = list()
-  six_det = matrix(0,1,6)
+  six_det = rep(0,6)
+  h0 = ceiling(n/2)
+  iter_list = rep(0,6)
   for (i in 1:6){
     #subset = x[sample(n,h),]
     #mu = apply(subset,2,mean)
@@ -164,29 +176,45 @@ covDetMCD <- function(x, alpha, ...) {
     correction = correct_eigen(x,initial_s)
     mu = correction$center
     s = correction$cov
+   
+    initial_distance = mahalanobis(x,mu,s)
+    Order = order(initial_distance)
+    initial_set = Order[1:h0]
+    initial_subset = x_initial[initial_set,]
+    s=cov(initial_subset)
+    mu = apply(initial_subset,2,mean)
     initial_det = det(s)
-    new_det = initial_det - 10^-6
+    #new_det = initial_det + 10^-6
+    new_det = Inf
     iter = 0
-    while (abs(new_det - initial_det)> 10^-8){
+    while (new_det !=initial_det){
       if (iter>0){
         initial_det = new_det
       }
-      distance = mahalanobis(x,mu,s)
+      
+      distance = mahalanobis(x_initial,mu,s)
+      
+      
       Order = order(distance)
       new_set = Order[1:h]
-      new_subset = x[new_set,]
-      new_mu = apply(new_subset,2,mean)
-      new_s = cov(new_subset)
-      new_det = det(new_s)
-      iter =+ 1
+      new_subset = x_initial[new_set,]
+      mu = apply(new_subset,2,mean)
+      s = cov(new_subset)
+      new_det = det(s)
+
+      iter = iter+1
       
     }
-    raw_center[i,]=new_mu
-    raw_cov[[i]]= new_s
+    iter_list[i]=iter
+    raw_center[i,]=mu
+    raw_cov[[i]]= s
     best_set[[i]] = new_subset
-    six_det[,i]=det(new_s)
+    six_det[i]=det(s)
     }
     min_index = which(six_det == min(six_det))
+    if (length(min_index)>1){
+      min_index = min_index[1]
+    }
     distance_of_best = mahalanobis(x,raw_center[min_index],raw_cov[[min_index]])
     best = which(distance_of_best <= qchisq(0.975,p))
     last_best = x[best,]
@@ -196,8 +224,8 @@ covDetMCD <- function(x, alpha, ...) {
     weights = replace(weights, best, 1)
     
       
-    output=list('raw.center'=raw_center[min_index], 'raw.cov' = raw_cov[[min_index]],'iter'=iter,'center'=center, 'cov'=cov,
-                'best'=best,'weights'=weights)
+    output=list('raw.center'=raw_center[min_index,], 'raw.cov' = raw_cov[[min_index]]*c_alpha,'iter'=iter_list,'center'=center, 'cov'=cov*c_alpha_reweight,
+                'best'=best,'weights'=weights,'det' = six_det)
     output
   }
   
@@ -232,7 +260,7 @@ covDetMCD <- function(x, alpha, ...) {
 lmDetMCD <- function(x, y, alpha, ...) {
   # *enter your code here*
   z = as.matrix(cbind(y,x))
-  fit = covDetMCD(z,alpha)
+  fit = mycovDetMCD(z,alpha)
   mu = fit$center
   sigma = fit$cov
   beta = solve(sigma[2:nrow(sigma),2:ncol(sigma)]) %*% sigma[2:nrow(sigma),1]

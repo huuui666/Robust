@@ -215,16 +215,16 @@ mycovDetMCD <- function(x, alpha, ...) {
     if (length(min_index)>1){
       min_index = min_index[1]
     }
-    distance_of_best = mahalanobis(x,raw_center[min_index],raw_cov[[min_index]])
+    distance_of_best = mahalanobis(x_initial,raw_center[min_index,],raw_cov[[min_index]]*c_alpha)
     best = which(distance_of_best <= qchisq(0.975,p))
-    last_best = x[best,]
-    center = apply(last_best,2,mean)
-    cov = cov(last_best)
+    last_best = x_initial[best,]
+    re_center = apply(last_best,2,mean)
+    re_cov = cov(last_best)
     weights = rep(0,n)
     weights = replace(weights, best, 1)
     
       
-    output=list('raw.center'=raw_center[min_index,], 'raw.cov' = raw_cov[[min_index]]*c_alpha,'iter'=iter_list,'center'=center, 'cov'=cov*c_alpha_reweight,
+    output=list('raw.center'=raw_center[min_index,], 'raw.cov' = raw_cov[[min_index]]*c_alpha,'iter'=iter_list,'center'=re_center, 'cov'=re_cov*c_alpha_reweight,
                 'best'=best,'weights'=weights,'det' = six_det)
     output
   }
@@ -265,7 +265,7 @@ lmDetMCD <- function(x, y, alpha, ...) {
   sigma = fit$cov
   beta = solve(sigma[2:nrow(sigma),2:ncol(sigma)]) %*% sigma[2:nrow(sigma),1]
   intercept =   mu[1]- t(mu[2:length(mu)]) %*% beta
-  fitted.values = rep(intercept,nrow(x)) + x%*% beta
+  fitted.values = rep(intercept,length(x)) + x%*% beta
   residuals = fitted.values - y
   output = list('coefficients'=rbind(intercept,beta), 'MCD' = fit, 'fitted.values' = fitted.values,'residuals' = residuals)  
 }

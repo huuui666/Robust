@@ -48,6 +48,7 @@ covMSS <- function(z) {
   # *enter your code here*
   z_norm = sqrt(apply(z^2,1,sum))
   k = z / z_norm
+  k = as.matrix(k)
   k[is.nan(k)]=0
   return (crossprod(k)/nrow(z))
 }
@@ -121,9 +122,35 @@ mycovDetMCD <- function(x, alpha, ...) {
   # the number of observations in the data set, as discussed in the lectures.
   # You can use function h.alpha.n() from package robustbase to compute the 
   # subset size.
-  library(expm)
+  mysqrtm = function(m){
+    E = eigen(m)
+    V = E$values
+    Q = E$vectors
+    Y = Q%*% diag(1/sqrt(V))%*%t(Q)
+    return(solve(Y))
+  }
+  Qnman <- function(var){
+    n=length(var)   
+    h_k <- floor((n/2) + 1)
+    k <- (h_k*(h_k-1))/2
+    
+    d <- 2.21914
+    start <- 1
+    values <- matrix(Inf, n*n, 1)
+    for(i in 1:n){
+      for(j in 1:n){
+        if(i < j){
+          values[start] <- abs(var[i] - var[j])
+          start = start + 1
+        }
+      }
+    }
+    sorted <- sort(values, decreasing = FALSE)
+    stat <- d*sorted[k]
+    return(stat)
+  }
   x_initial = x
-  x = apply(x,2,function(y) (y-median(y))/qn(y))
+  x = apply(x,2,function(y) (y-median(y))/Qnman(y))
   
      
   n = nrow(x)
@@ -135,10 +162,10 @@ mycovDetMCD <- function(x, alpha, ...) {
     eigen_list = eigen(s)
     E = as.matrix(eigen_list$vectors)
     V = x %*% E
-    l = apply(V,2,qn)
+    l = apply(V,2,Qnman)
     L = diag(l^2)
     sigma = E %*% L %*% t(E)
-    mu = sqrtm(sigma) %*% apply(x %*% solve(sqrtm(sigma)),2,median)
+    mu = mysqrtm(sigma) %*% apply(x %*% solve(mysqrtm(sigma)),2,median)
     output = list('center' = mu,'cov' = sigma)
     output
   }

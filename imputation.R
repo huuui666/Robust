@@ -47,7 +47,7 @@ multimp <- function(xy, m, DDC = FALSE, ...) {
     indice = ddc_result$indall
     xy[indice] = NA
   }
-  missing_ob = nrow(x[!complete.cases(xy),])
+  missing_ob = sum(!complete.cases(xy))
   missing_percentage = missing_ob / nrow(xy)
   if (missing(m)) m = ceiling(missing_percentage*100)
   imputed= irmi(xy,mi=m)
@@ -73,9 +73,10 @@ fit <- function(xyList, ...) {
   # You can use function lmrob() from package robustbase for the MM-estimator.
   m = xyList$m
   data = xyList$imputed
-  model = list()
+  models = list()
   for (i in 1:m){
-    models[[i]] = lmrob(data[[i]])
+    models[[i]] = lmrob(data[[i]],control=lmrob.control(max.it=100,k.max=400))
+  
   }
   output = list('models' = models, 'm' = m)
 }
@@ -94,7 +95,7 @@ fit <- function(xyList, ...) {
 # column, the estimated degrees of freedom in the fourth column, and the
 # p-value in the fifth column (see slide 50 of Lecture 5 for an example)
 
-pool <- function(fitList, ...) {
+mypool <- function(fitList, ...) {
   m = fitList$m
   models = fitList$models
   p = length(models[[1]]$coefficients)
@@ -119,8 +120,8 @@ pool <- function(fitList, ...) {
   pool_t = pool_coe/ pool_sd
   
   gamma_m = (m+1)/m * between_variance/pool_var
-  v_m = (m-1)/gamma_m
-  vcomp = nrow(models[[1]]$model)-p-1
+  v_m = (m-1)/gamma_m^2
+  vcomp = nrow(models[[1]]$model)-p
   v_obs = (vcomp+1)/(vcomp+3) * vcomp * (1-gamma_m)
   pool_freedom = v_m*v_obs / (v_m+v_obs)
   
@@ -166,6 +167,28 @@ bootstrap <- function(x, R, k, DDC = FALSE, ...) {
   # You can use function DDC() from package cellWise, function kNN() from 
   # package VIM for imputations, and function lmrob() from package robustbase 
   # for the MM-estimator.
-  
-  
+  if (DDC == TRUE){
+    ddc_result = DDC(x)
+    indice = ddc_result$indall
+    x[indice] = NA
+  }
+  replicates = matrix(NA,ncol(x),R)
+  for (i in 1:R){
+    x1 = x[sample(nrow(x),nrow(x),replace=TRUE),]
+    data = kNN(as.data.frame(x1),k=k)
+    data = data[,1:(ncol(data)/2)]
+    fit = lmrob(data,control=lmrob.control(max.it=100,k.max=400))
+    replicates[,i] = fit$coefficients
+  }
+  pool_estimate = apply(replicates,1,mean)
+  pool_var = apply(replicates,1,var)
+  pool_sd = sqrt(pool_var)
+  pool_z = pool_estimate/pool_sd
+  pool_p = matrix(NA,ncol(x),1)
+  for (i in 1:ncol(x)){
+    pool_p[i,] = 2*pnorm(abs(pool_z[i]),lower.tail = FALSE)
+  }
+  su=cbind(pool_estimate,pool_sd,pool_z,pool_p)
+  colnames(su) = c('Estimate','Std.Error','z.values','Pr(>|z|)')
+  output = list('replicates' = replicates,'summary'=su)
 }

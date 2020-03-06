@@ -1,6 +1,7 @@
 # -----------------------------------------
 # Author:
 # *Enter your name and student number here*
+#zhaohui wang 466503
 # -----------------------------------------
 
 ## Use this code skeleton to implement the procedures for obtaining point
@@ -41,17 +42,22 @@ multimp <- function(xy, m, DDC = FALSE, ...) {
   #
   # You can use function DDC() from package cellWise, as well as function 
   # irmi() from package VIM for imputations.
-  
+  library(VIM)
+  library(cellWise)
+  xy = as.matrix(xy)
   if (DDC == TRUE){
     ddc_result = DDC(xy)
-    indice = ddc_result$indall
+    indice = ddc_result$indcells
     xy[indice] = NA
   }
-  missing_ob = sum(!complete.cases(xy))
-  missing_percentage = missing_ob / nrow(xy)
-  if (missing(m)) m = ceiling(missing_percentage*100)
+  if (missing(m)){
+    missing_ob = sum(!complete.cases(xy))
+    missing_percentage = missing_ob / nrow(xy)
+    m = ceiling(missing_percentage*100)
+  }
+  
   imputed= irmi(xy,mi=m)
-  output = list('imputed'= imputed, 'm' = m)
+  output = list('imputed'= imputed, 'm' = m,'data'=xy)
 }
 
 
@@ -71,11 +77,12 @@ multimp <- function(xy, m, DDC = FALSE, ...) {
 
 fit <- function(xyList, ...) {
   # You can use function lmrob() from package robustbase for the MM-estimator.
+  library(robustbase)
   m = xyList$m
   data = xyList$imputed
   models = list()
   for (i in 1:m){
-    models[[i]] = lmrob(data[[i]],control=lmrob.control(max.it=100,k.max=400))
+    models[[i]] = lmrob(data[[i]],control=lmrob.control(max.it=1000,k.max=1000,maxit.scale = 1000))
   
   }
   output = list('models' = models, 'm' = m)
@@ -95,7 +102,7 @@ fit <- function(xyList, ...) {
 # column, the estimated degrees of freedom in the fourth column, and the
 # p-value in the fifth column (see slide 50 of Lecture 5 for an example)
 
-mypool <- function(fitList, ...) {
+pool <- function(fitList, ...) {
   m = fitList$m
   models = fitList$models
   p = length(models[[1]]$coefficients)
@@ -160,16 +167,19 @@ mypool <- function(fitList, ...) {
 #              the z-statistic in the third column, and the p-value in the 
 #              fourth column (see slide 29 of Lecture 5 for an example)
 
-bootstrap <- function(x, R, k, DDC = FALSE, ...) {
+bootstrap <- function(x, R=500, k=5, DDC = FALSE, ...) {
   # You should set a sensible default for the number of bootstrap replicates R 
   # and the number of neighbors k.
   #
   # You can use function DDC() from package cellWise, function kNN() from 
   # package VIM for imputations, and function lmrob() from package robustbase 
   # for the MM-estimator.
+  library(cellWise)
+  library(VIM)
+  x = as.matrix(x)
   if (DDC == TRUE){
     ddc_result = DDC(x)
-    indice = ddc_result$indall
+    indice = ddc_result$indcells
     x[indice] = NA
   }
   replicates = matrix(NA,ncol(x),R)
@@ -177,7 +187,7 @@ bootstrap <- function(x, R, k, DDC = FALSE, ...) {
     x1 = x[sample(nrow(x),nrow(x),replace=TRUE),]
     data = kNN(as.data.frame(x1),k=k)
     data = data[,1:(ncol(data)/2)]
-    fit = lmrob(data,control=lmrob.control(max.it=100,k.max=400))
+    fit = lmrob(data,control=lmrob.control(max.it=1000,k.max=1000,maxit.scale = 1000))
     replicates[,i] = fit$coefficients
   }
   pool_estimate = apply(replicates,1,mean)

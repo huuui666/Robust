@@ -1,25 +1,9 @@
-# --------------------------------------------------------------------
-# Author:
-# *Enter your group number here, as well as names and student numbers*
-# --------------------------------------------------------------------
-
-## Use this code skeleton to implement the deterministic MCD and the plug-in
-## robust regression estimator.  Please submit your implementation together
-## with your report.
-
-## IMPORTANT: Please do not change any function names and make sure that you
-##            use the correct input and output as specified for each function.
-##            This will simplify grading because each group's code will be
-##            similarly structured.  However, feel free to add other arguments
-##            to the function definitions as needed.
-
-
 
 ## Functions for initial estimators
 
 # Input: the standardized data matrix z
 # Output: the estimated covariance or correlation matrix
-# Please do not use any other input or output for the initial estimators
+
 
 # correlation matrix based on the hyperbolic tangent
 corHT <- function(z) {
@@ -52,11 +36,7 @@ covMSS <- function(z) {
   k[is.nan(k)]=0
   return (crossprod(k)/nrow(z))
 }
-#   cross = apply(k,1,function(y) (y%*%t(y)))
-#   cross[is.nan(cross)]=0
-#   output = matrix(apply(cross,1,sum),ncol(z),ncol(z))
-#   return (output/nrow(z))
-# }
+
 
 # covariance matrix based on first step of BACON
 covBACON1 <- function(z) {
@@ -113,14 +93,10 @@ rawCovOGK <- function(z) {
 # raw.cov ...... covariance matrix of the raw estimator
 # best ......... indices of the observations in the best subset found by the
 #                raw estimator
-# any other output you want to return
 
 mycovDetMCD <- function(x, alpha, ...) {
-  # *enter your code here*
-  #
-  # Please note that the subset sizes for the MCD are not simply fractions of 
-  # the number of observations in the data set, as discussed in the lectures.
-  # You can use function h.alpha.n() from package robustbase to compute the 
+
+  #  use function h.alpha.n() from package robustbase to compute the 
   # subset size.
   mysqrtm = function(m){
     E = eigen(m)
@@ -282,7 +258,7 @@ mycovDetMCD <- function(x, alpha, ...) {
 # residuals ....... residuals for all observations in the data
 # MCD ............. R object for the deterministic MCD (entire output from
 #                   function covDetMCD())
-# any other output you want to return
+
 
 lmDetMCD <- function(x, y, alpha, ...) {
   # *enter your code here*

@@ -1,20 +1,3 @@
-# -----------------------------------------
-# Author:
-# *Enter your name and student number here*
-#zhaohui wang 466503
-# -----------------------------------------
-
-## Use this code skeleton to implement the procedures for obtaining point
-## estimates and valid standard errors via multiple imputation or the 
-## bootstrap.  Please submit your implementation together with your report.
-
-## IMPORTANT: Please do not change any function names and make sure that you
-##            use the correct input and output as specified for each function.
-##            This will simplify grading because each student's code will be
-##            similarly structured.  However, feel free to add other arguments
-##            to the function definitions as needed.
-
-
 
 ## Functions for multiple imputation via iterative model-based imputation
 
@@ -35,7 +18,7 @@
 # imputed   this should again be a list in which each list element is one 
 #           imputed data set
 # m         the number of imputations
-# any other information you want to keep
+
 
 multimp <- function(xy, m, DDC = FALSE, ...) {
   # You should set a sensible default for the number of imputations m.
@@ -56,7 +39,7 @@ multimp <- function(xy, m, DDC = FALSE, ...) {
     m = ceiling(missing_percentage*100)
   }
   
-  imputed= irmi(xy,mi=m)
+  imputed= irmi(xy,mi=m, robust=TRUE)
   output = list('imputed'= imputed, 'm' = m,'data'=xy)
 }
 
@@ -73,10 +56,9 @@ multimp <- function(xy, m, DDC = FALSE, ...) {
 # models   this should again be a list in which each list element is a 
 #          regression model (fitted to the corresponding imputed data set)
 # m        the number of imputations
-# any other information you want to keep
 
 fit <- function(xyList, ...) {
-  # You can use function lmrob() from package robustbase for the MM-estimator.
+  #  use function lmrob() from package robustbase for the MM-estimator.
   library(robustbase)
   m = xyList$m
   data = xyList$imputed
@@ -100,7 +82,7 @@ fit <- function(xyList, ...) {
 # A matrix that contains the pooled coefficients in the first column, the
 # pooled standard errors in the second column, the t-statistic in the third
 # column, the estimated degrees of freedom in the fourth column, and the
-# p-value in the fifth column (see slide 50 of Lecture 5 for an example)
+# p-value in the fifth column 
 
 pool <- function(fitList, ...) {
   m = fitList$m
@@ -165,13 +147,11 @@ pool <- function(fitList, ...) {
 # summary      a matrix that contains the point estimates of the coefficients 
 #              in the first column, the standard errors in the second column, 
 #              the z-statistic in the third column, and the p-value in the 
-#              fourth column (see slide 29 of Lecture 5 for an example)
+#              fourth column 
 
 bootstrap <- function(x, R=500, k=5, DDC = FALSE, ...) {
-  # You should set a sensible default for the number of bootstrap replicates R 
-  # and the number of neighbors k.
-  #
-  # You can use function DDC() from package cellWise, function kNN() from 
+
+  #  use function DDC() from package cellWise, function kNN() from 
   # package VIM for imputations, and function lmrob() from package robustbase 
   # for the MM-estimator.
   library(cellWise)
